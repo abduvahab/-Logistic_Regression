@@ -1,1 +1,7 @@
-ksdj dskk jskjdjk
+ s, t, e 
+ 5d,,5
+# 0. check the file has right path , content file , then get the data
+# 1. all is numeric value (float , int) , wa can get all features
+#     * dont  count the nan value 
+# 2. all is null, we give result nan, count is 0
+# 3. there is string , we don't take  account this columns  
