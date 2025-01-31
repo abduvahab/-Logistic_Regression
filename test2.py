@@ -1,25 +1,13 @@
-import seaborn as sns
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from sklearn.datasets import load_iris
+
 
 def read_data():
     # Load the Iris dataset
     iris = load_iris()
     df = pd.DataFrame(iris.data, columns=iris.feature_names)
     df['Species'] = iris.target
-
-    # Map target values to species names
-    # species_map = {0: "Setosa", 1: "Versicolor", 2: "Virginica"}
-    # df['Species'] = df['Species'].map(species_map)
-
-    # print(df.info())
-    # print(df)
-
-    # Create a pair plot
-    # sns.pairplot(df, hue="Species", diag_kind="kde")
-    # plt.show()
     return df
 
 
@@ -28,63 +16,61 @@ def sigmoid(X):
 
 
 def loss_computation(y, y_predict):
+    # Avoid log(0) by clipping predictions
+    y_predict = np.clip(y_predict, 1e-15, 1 - 1e-15)
     return -np.mean(y * np.log(y_predict) + (1 - y) * np.log(1 - y_predict))
 
-def gradiant_descent(X, y, weights, l_rate, epoch):
 
+def gradient_descent(X, y, weights, l_rate, epoch):
     for i in range(epoch):
         y_predict = sigmoid(np.dot(X, weights.T))
-        gradient = np.dot(X.T, (y - y_predict))/(y.size)
-        weights += l_rate * gradient
-        if i % 100 == 0 :
+        gradient = np.dot(X.T, (y - y_predict)) / y.size
+        weights += l_rate * gradient  # Update weights
+        if i % 100 == 0:  # Print loss every 100 iterations
             loss = loss_computation(y, y_predict)
-            # print(f"itaretion {i} , loss:{loss:4f}")
-    # print(f"the weights:\n{weights}")
+            # print(f"Iteration {i}, Loss: {loss:.6f}")
     return weights
-    pass
 
 
-def train_model(df: pd.DataFrame, l_rate=0.005, epoch=10000):
-
-    #get features and target columns
+def train_model(df: pd.DataFrame, l_rate=0.01, epoch=5000):
+    # Get features and target columns
     X = df.iloc[:, :-1].values
     y = df.iloc[:, -1].values
 
-    #get classes
-    # classes = df['Species'].unique()
-    # Get unique classes
-    classes = np.unique(y)
     # Normalize features
     X = (X - X.mean(axis=0)) / X.std(axis=0)
 
-    #add bias to features
+    # Add bias to features
     X = np.c_[np.ones(X.shape[0]), X]
 
-    # weights
+    # Get unique classes
+    classes = np.unique(y)
+
+    # Initialize weights
     num_classes = len(classes)
-    # weights = np.zeros((num_classes, X.shape[1]))
     weights = np.random.rand(num_classes, X.shape[1]) * 0.01  # Small random weights
 
     for i, c in enumerate(classes):
-        #(one vs rest) in the target , right value is 1, the rest wrong vlues is 0
-        y_binary = (y==c).astype(int)
-        #gradiant descent
-        weights[i] = gradiant_descent(X, y_binary, weights[i], l_rate, epoch)
-        
-    print(weights)
+        # One-vs-rest for the target
+        y_binary = (y == c).astype(int)
+        # Gradient descent
+        weights[i] = gradient_descent(X, y_binary, weights[i], l_rate, epoch)
+
     return weights
-    # print(X)
-    # print(y)
-    pass
+
 
 def predict_multiclass(X, weights):
     # Normalize features (same as during training)
     X = (X - X.mean(axis=0)) / X.std(axis=0)
+
+    # Add bias to features
     X = np.c_[np.ones(X.shape[0]), X]
-    y_predict  =sigmoid(np.dot(X, weights.T))
-    # print(y_predict)
+
+    # Predict probabilities for each class
+    y_predict = sigmoid(np.dot(X, weights.T))
+
+    # Choose the class with the highest probability
     y_predict = np.argmax(y_predict, axis=1)
-    print(y_predict)
     return y_predict
 
 def calculate_precision(y_true, y_pred, num_classes):
@@ -110,13 +96,16 @@ def calculate_precision(y_true, y_pred, num_classes):
 def main():
     df = read_data()
     weights = train_model(df)
-    y_predict = predict_multiclass(df.iloc[:, :-1], weights)
+    y_predict = predict_multiclass(df.iloc[:, :-1].values, weights)
     y_true = df['Species'].values
     num_classes = len(np.unique(y_true))
     
     # Calculate precision
     calculate_precision(y_true, y_predict, num_classes)
-    pass
+    # print("Predicted classes for all items:")
+    # print(y_predict)
+    # print("Actual classes:")
+    # print(df['Species'].values)
 
 
 if __name__ == "__main__":
